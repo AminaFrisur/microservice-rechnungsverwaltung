@@ -1,6 +1,4 @@
-FROM postgres:14.1-alpine
+FROM mongo:latest
 LABEL description="Database of Microservice Fuhrpark"
-
-COPY ./sqlData/data.sql /docker-entrypoint-initdb.d/
-
-
+COPY ./sqlData/docker-entrypoint.js /docker-entrypoint-initdb.d/
+CMD ["mongod"]
