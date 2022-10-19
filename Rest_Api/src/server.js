@@ -9,9 +9,13 @@ var jsonBodyParser = bodyParser.json({ type: 'application/json' });
 // Constants
 const PORT = 8001;
 const HOST = '0.0.0.0';
-const { MongoClient } = require("mongodb");
-const uri = "mongodb://0.0.0.0:27017";
-const client = new MongoClient(uri);
+const mongoose = require('mongoose');
+mongoose.Promise = global.Promise;
+const dbconfig = {
+    url: 'mongodb://database_rechnungsverwaltung:27017',
+    user: 'admin',
+    pwd: 'test1234'
+}
 
 function checkParams(req, res, requiredParams) {
     console.log("checkParams", requiredParams);
@@ -45,15 +49,17 @@ function checkParams(req, res, requiredParams) {
 const app = express();
 
 app.get('/getInvoices', [jsonBodyParser], async function (req, res) {
-    try {
-        await client.connect();
-        await client.db("admin").command({ ping: 1 });
-        console.log("Connected successfully to server");
+    mongoose.connect(dbconfig.url, {
+        useNewUrlParser: true,
+        user: dbconfig.user,
+        pass: dbconfig.pwd
+    }).then(() => {
+        console.log('successfully connected to the database');
         res.send(200, "response");
-
-    } finally {
-        await client.close();
-    }
+    }).catch(err => {
+        console.log('error connecting to the database');
+        res.send(404, "response");
+    });
 });
 
 app.get('/getInvoice/:id', [jsonBodyParser], async function (req, res) {

@@ -3,19 +3,19 @@ networks:
   main:
 
 services:
-  rest_api:
-    image: rest_api_fuhrpark_ms
+  rest_api_rechnungsverwaltung:
+    image: rest_api_rechnungsverwaltung_ms
     ports:
-      - "8000:8000"
+      - "8001:8001"
     networks:
       - main
 
-  database:
-    image: datenbank_postgres_fuhrpark_ms
+  database_rechnungsverwaltung:
+    image: datenbank_mongodb_rechnungsverwaltung_ms
     ports:
-      - "5432:5432"
+      - "27017:27017"
     networks:
       - main
     environment:
-      POSTGRES_PASSWORD: test
-      network-alias: database
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: test1234
