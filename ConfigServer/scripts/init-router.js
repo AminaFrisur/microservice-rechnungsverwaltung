@@ -1,0 +1,6 @@
+sh.addShard("shard-01-db-rechnungsverwaltung/shard01rechnungsverwaltung1:27017")
+sh.addShard("shard-01-db-rechnungsverwaltung/shard01rechnungsverwaltung2:27017")
+sh.addShard("shard-01-db-rechnungsverwaltung/shard01rechnungsverwaltung3:27017")
+sh.addShard("shard-02-db-rechnungsverwaltung/shard02rechnungsverwaltung1:27017")
+sh.addShard("shard-02-db-rechnungsverwaltung/shard02rechnungsverwaltung2:27017")
+sh.addShard("shard-02-db-rechnungsverwaltung/shard02rechnungsverwaltung3:27017")

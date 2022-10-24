@@ -1,21 +1,91 @@
 
-networks:
-  main:
-
 services:
-  rest_api_rechnungsverwaltung:
-    image: rest_api_rechnungsverwaltung_ms
+  ## Router
+  router01rechnungsverwaltung:
+    image: datenbank_mongodb_rechnungsverwaltung_config_cluster_ms
+    container_name: router01rechnungsverwaltung
+    command: mongos --port 27017 --configdb rechnungsverwaltung-mongodb-config-server/dbRechnungConfig1:27017,dbRechnungConfig2:27017,dbRechnungConfig3:27017 --bind_ip_all
     ports:
-      - "8000:8000"
-    networks:
-      - main
+      - 27117:27017
 
-  database_rechnungsverwaltung:
-    image: datenbank_mongodb_rechnungsverwaltung_ms
+  router02rechnungsverwaltung:
+    image: datenbank_mongodb_rechnungsverwaltung_config_cluster_ms
+    container_name: router02rechnungsverwaltung
+    command: mongos --port 27017 --configdb rechnungsverwaltung-mongodb-config-server/dbRechnungConfig1:27017,dbRechnungConfig2:27017,dbRechnungConfig3:27017 --bind_ip_all
     ports:
-      - "27017:27017"
-    networks:
-      - main
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: test1234
+      - 27118:27017
+    links:
+      - router-01-rechnungsverwaltung
+
+  ## Config Servers
+  dbRechnungConfig1:
+    image: datenbank_mongodb_rechnungsverwaltung_config_cluster_ms
+    ports:
+      - 27017:27017
+    container_name: dbRechnungConfig1
+    command: mongod --port 27017 --configsvr --replSet rechnungsverwaltung-mongodb-config-server
+
+  dbRechnungConfig2:
+    image: datenbank_mongodb_rechnungsverwaltung_config_cluster_ms
+    ports:
+      - 27018:27017
+    container_name: dbRechnungConfig2
+    command: mongod --port 27017 --configsvr --replSet rechnungsverwaltung-mongodb-config-server
+
+  dbRechnungConfig3:
+    image: datenbank_mongodb_rechnungsverwaltung_config_cluster_ms
+    ports:
+      - 27019:27017
+    container_name: dbRechnungConfig3
+    command: mongod --port 27017 --configsvr --replSet rechnungsverwaltung-mongodb-config-server
+
+  ## Shards 1
+  shard01rechnungsverwaltung1:
+    image: datenbank_mongodb_rechnungsverwaltung_ms
+    container_name: shard01rechnungsverwaltung1
+    command: mongod --port 27017 --shardsvr --replSet shard-01-db-rechnungsverwaltung
+    ports:
+      - 27122:27017
+    links:
+      - shard01rechnungsverwaltung2
+      - shard01rechnungsverwaltung3
+
+  shard01rechnungsverwaltung2:
+    image: datenbank_mongodb_rechnungsverwaltung_ms
+    container_name: shard01rechnungsverwaltung2
+    command: mongod --port 27017 --shardsvr --replSet shard-01-db-rechnungsverwaltung
+    ports:
+      - 27123:27017
+
+  shard01rechnungsverwaltung3:
+    image: datenbank_mongodb_rechnungsverwaltung_ms
+    container_name: shard01rechnungsverwaltung3
+    command: mongod --port 27017 --shardsvr --replSet shard-01-db-rechnungsverwaltung
+    ports:
+      - 27124:27017
+
+
+  ## Shards 2
+  shard02rechnungsverwaltung1:
+    image: datenbank_mongodb_rechnungsverwaltung_ms
+    container_name: shard02rechnungsverwaltung1
+    command: mongod --port 27017 --shardsvr --replSet shard-02-db-rechnungsverwaltung
+    ports:
+      - 27125:27017
+    links:
+      - shard02rechnungsverwaltung2
+      - shard02rechnungsverwaltung3
+
+  shard02rechnungsverwaltung2:
+    image: datenbank_mongodb_rechnungsverwaltung_ms
+    container_name: shard02rechnungsverwaltung2
+    command: mongod --port 27017 --shardsvr --replSet shard-02-db-rechnungsverwaltung
+    ports:
+      - 27126:27017
+
+  shard02rechnungsverwaltung3:
+    image: datenbank_mongodb_rechnungsverwaltung_ms
+    container_name: shard02rechnungsverwaltung3
+    command: mongod --port 27017 --shardsvr --replSet shard-02-db-rechnungsverwaltung
+    ports:
+      - 27127:27017
