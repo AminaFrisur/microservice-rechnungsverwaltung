@@ -6,7 +6,7 @@ services:
   rest_api_rechnungsverwaltung:
     image: rest_api_rechnungsverwaltung_ms
     ports:
-      - "8001:8001"
+      - "8000:8000"
     networks:
       - main
 

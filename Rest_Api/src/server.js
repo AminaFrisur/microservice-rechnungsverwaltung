@@ -1,26 +1,43 @@
 'use strict';
-
-
 // TODO: GENERELL -> Authentifizierung zwischen Microservices muss noch umgesetzt werden
+// TODO: Aufsteigende Rechnungsnummern !
 
 const express = require('express');
 const bodyParser = require('body-parser');
 var jsonBodyParser = bodyParser.json({ type: 'application/json' });
 // Constants
-const PORT = 8001;
+const PORT = 8000;
 const HOST = '0.0.0.0';
 const mongoose = require('mongoose');
 
 mongoose.Promise = global.Promise;
 const dbconfig = {
-    url: 'mongodb://database_rechnungsverwaltung:27017',
+    url: 'mongodb://database_rechnungsverwaltung1:27017',
     user: 'admin',
     pwd: 'test1234'
 }
 
+function sleep(time) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, time || 1000);
+    });
+}
+
+// Dadurch das Javascript Thread Safe ist muss hier keine Synchronisierung stattfinden !
+// Wird bei CreateInvoice hochgezählt
+// Falls es doch zu einem doppelten Wert in der DB führt, gibt die MongoDB durch unique Index Konfiguration einen Fehler zurück
+// Also kann keine Rechnung in der DB erscheinen die eine doppelte Rechnungsnummer besitzt
+let aktuelleRechnungsNummer = 0;
+
 // definiere ein Schema
 const Schema = mongoose.Schema;
 const ObjectId = Schema.ObjectId;
+
+// javascript code wird immer nur seriel ausgeführt
+// das bedeutet, das alle Funktionen auch Threadsafe sind
+// somit brauchen wir auch keine synchronisation innerhalb eine nodejs instanz
+// anders ist dies bei Microservices und der beispielhaften Skalierung der REST API
+// deshalb wird aufjedenfall eine Synchronisierung innerhalb dieser Architektur benötigt
 
 const rechnung = new Schema({
     id: ObjectId,
@@ -30,8 +47,9 @@ const rechnung = new Schema({
     loginName: String,
     vorname: String,
     nachname: String,
-    Straße: String,
-    Hausnummer: String,
+    straße: String,
+    hausnummer: String,
+    plz: Number,
     // Hier vorsicht: theoretisch eine verteile DB Transaktion
     // Da aber keine Fahrzeuge gelöscht werden, kann hier nichts passieren deshalb OK !
     fahrzeugId: Number,
@@ -39,11 +57,11 @@ const rechnung = new Schema({
     fahrzeugModel: String,
     dauerDerBuchung: String,
     preisNetto: Number,
-    bezahlt: Boolean
+    bezahlt: Boolean,
+    storniert: Boolean,
 });
 
 const rechnungenDB = mongoose.model('Invoice', rechnung);
-
 
 function checkParams(req, res, requiredParams) {
     console.log("checkParams", requiredParams);
@@ -56,7 +74,7 @@ function checkParams(req, res, requiredParams) {
             && !(req.params && param in req.params)) {
             let error = "error parameter " + param + " is missing";
             console.log(error);
-            res.send(401).send(error);
+            throw error;
             return;
         }
 
@@ -76,30 +94,27 @@ function checkParams(req, res, requiredParams) {
 // App
 const app = express();
 
-
-
 // api call für eventuelle Statistiken
 app.get('/getInvoices', [jsonBodyParser], async function (req, res) {
-
     try {
         await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
         console.log("Verbindung zur DB war erreich!")
         const rechnungen = rechnungenDB.find({});
         console.log(rechnungen);
-        res.send(200, rechnungen)
+        res.status(200).send(rechnungen);
     } catch(err){
         console.log(err);
-        res.send(404, "something went wrong");
+        res.status(401).send(err);
     }
 });
 
 app.get('/getInvoice/:rechnungsNummer', [jsonBodyParser], async function (req, res) {
     try {
         await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
-        res.send(200, "test")
+        res.send(200, "test");
     } catch(err){
         console.log('db error');
-        res.send(404, "something went wrong");
+        res.status(401).send(err);
     }
 
 });
@@ -107,39 +122,48 @@ app.get('/getInvoice/:rechnungsNummer', [jsonBodyParser], async function (req, r
 app.get('/getInvoiceByUser/:loginName', [jsonBodyParser], async function (req, res) {
     try {
         await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
-        res.send(200, "test")
+        res.send(200, "test");
     } catch(err){
         console.log('db error');
-        res.send(404, "something went wrong");
+        res.status(401).send(err);
     }
 
 });
 
-app.get('/createInvoice', [jsonBodyParser], async function (req, res) {
+app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
     try {
         await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd, dbName: "backend"});
+        let params = checkParams(req, res,["loginName", "vorname", "nachname", "straße",
+                                                        "hausnummer", "plz", "fahrzeugId", "fahrzeugTyp", "fahrzeugModel",
+                                                        "dauerDerBuchung", "preisNetto"]);
+        // Dies funktioniert da javascript generell single Thread Modus arbeitet
+        // Sobald das await kommt wird der code oben für die nächste Anfrage ausgeführt
+        // Somit ist dieses Aufzählen Thread sicher !
+        // Problem: Bei Skalierung muss dies auch abgestimmt werden
+        // Deshalb TODO: Aufbau eines Datenbank Cluster Systems das mithilfe von Triggern die Rechnungsnummern bestimmt !
+        // Wird auch für die anderen Microservices wichtig
+        aktuelleRechnungsNummer = aktuelleRechnungsNummer + 1;
         await rechnungenDB.create({
-            rechnungsNummer: 1,
             rechnungsDatum: Date.now(),
-            loginName: "test123",
-            vorname: "tim",
-            nachname: "hoeffner",
-            Straße: "beispielsstraße",
-            Hausnummer: "12",
-            fahrzeugId: 1,
-            fahrzeugTyp: "SUV",
-            fahrzeugModel: "Tesla",
-            dauerDerBuchung: "2 Std",
-            preisNetto: 20,
-            bezahlt: false
+            rechnungsNummer: aktuelleRechnungsNummer,
+            loginName: params.loginName,
+            vorname: params.vorname,
+            nachname: params.nachname,
+            straße: params.straße,
+            hausnummer: params.hausnummer,
+            plz: params.plz,
+            fahrzeugId: params.fahrzeugId,
+            fahrzeugTyp: params.fahrzeugTyp,
+            fahrzeugModel: params.fahrzeugModel,
+            dauerDerBuchung: params.dauerDerBuchung,
+            preisNetto: params.preisNetto,
+            bezahlt: false,
+            storniert: false
         });
-        // const m = new rechnungenDB({});
-        // await m.save(); // works
-
         res.send(200, "Rechnung wurde erfolgeich erstellt")
     } catch(err){
         console.log('db error');
-        res.send(404, "something went wrong");
+        res.status(401).send(err);
     }
 });
 
