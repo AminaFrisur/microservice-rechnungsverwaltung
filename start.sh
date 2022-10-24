@@ -6,5 +6,9 @@ docker compose exec shard02rechnungsverwaltung1 sh -c "mongosh < /scripts/init-s
 docker compose exec router01rechnungsverwaltung sh -c "mongosh < /scripts/init-router.js"
 
 # Set Up Database and Collection for shards
-docker exec shard01rechnungsverwaltung1 sh -c "mongosh < /scripts/createCollection.js"
-docker exec shard02rechnungsverwaltung1 sh -c "mongosh < /scripts/createCollection.js"
+## docker exec shard01rechnungsverwaltung1 sh -c "mongosh < /scripts/createCollection.js"
+## docker exec shard02rechnungsverwaltung1 sh -c "mongosh < /scripts/createCollection.js"
+
+# share Database backend for all shards
+# mongosh --eval "sh.enableSharding('backend')"
+# mongosh --eval "db.adminCommand( { shardCollection: 'backend.Invoices', key: { oemNumber: 'hashed', zipCode: 1, supplierId: 1 } } )"
