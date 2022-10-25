@@ -39,3 +39,9 @@ Stand 24.10:
 - Komponente 2: Mongos -> Ist ein Query Router und ist die Schnittstelle zwischen Client und Sharded Cluster
 - Komponente 3: Config Server -> Speichert Metadaten und Konfiguration über den Cluster -> ebenfalls nur deploybar als Replica Set
 - Aktuell die wichtigste Doku dazu: https://github.com/minhhungit/mongodb-cluster-docker-compose
+
+Stand 25.10:
+- läuft jetzt alles
+- Was noch fehlt: die Konfiguration des Loadbalancing für den Mongos Router
+- Damit die Datensätze auch verteilt werden
+- https://www.mongodb.com/docs/manual/core/sharded-cluster-query-router/

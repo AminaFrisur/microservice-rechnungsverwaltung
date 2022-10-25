@@ -11,4 +11,5 @@ docker compose exec router01rechnungsverwaltung sh -c "mongosh < /scripts/init-r
 
 # share Database backend for all shards
 # mongosh --eval "sh.enableSharding('backend')"
-# mongosh --eval "db.adminCommand( { shardCollection: 'backend.Invoices', key: { oemNumber: 'hashed', zipCode: 1, supplierId: 1 } } )"
+# mongosh --eval "db.adminCommand( { shardCollection: 'backend.invoices', key: { oemNumber: 'hashed', zipCode: 1, supplierId: 1 } } )"
+# mongosh --eval "db.invoices.createIndex( { "rechnungsNummer": 1 }, { unique: true } );"

@@ -12,15 +12,9 @@ const mongoose = require('mongoose');
 
 mongoose.Promise = global.Promise;
 const dbconfig = {
-    url: 'mongodb://database_rechnungsverwaltung1:27017',
+    url: 'mongodb://router01rechnungsverwaltung/backend',
     user: 'admin',
     pwd: 'test1234'
-}
-
-function sleep(time) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, time || 1000);
-    });
 }
 
 // Dadurch das Javascript Thread Safe ist muss hier keine Synchronisierung stattfinden !
@@ -97,7 +91,8 @@ const app = express();
 // api call für eventuelle Statistiken
 app.get('/getInvoices', [jsonBodyParser], async function (req, res) {
     try {
-        await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
+        // await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
+        await mongoose.connect("mongodb://router01rechnungsverwaltung/backend");
         console.log("Verbindung zur DB war erreich!")
         const rechnungen = rechnungenDB.find({});
         console.log(rechnungen);
@@ -132,7 +127,7 @@ app.get('/getInvoiceByUser/:loginName', [jsonBodyParser], async function (req, r
 
 app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
     try {
-        await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd, dbName: "backend"});
+        await mongoose.connect(dbconfig.url, {useNewUrlParser: true, dbName: "backend"});
         let params = checkParams(req, res,["loginName", "vorname", "nachname", "straße",
                                                         "hausnummer", "plz", "fahrzeugId", "fahrzeugTyp", "fahrzeugModel",
                                                         "dauerDerBuchung", "preisNetto"]);
@@ -140,8 +135,9 @@ app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
         // Sobald das await kommt wird der code oben für die nächste Anfrage ausgeführt
         // Somit ist dieses Aufzählen Thread sicher !
         // Problem: Bei Skalierung muss dies auch abgestimmt werden
-        // Deshalb TODO: Aufbau eines Datenbank Cluster Systems das mithilfe von Triggern die Rechnungsnummern bestimmt !
+        // Deshalb TODO: Aufbau eines Datenbank Cluster Systems das mithilfe von Triggern die Rechnungsnummern bestimmt ! -> ist doch nicht nötig, da der Cluster die Unique Key Eigenschaft über den Cluster gewährleistet
         // Wird auch für die anderen Microservices wichtig
+        // TODO: Loadbalancing für Router selber konfigurieren
         aktuelleRechnungsNummer = aktuelleRechnungsNummer + 1;
         await rechnungenDB.create({
             rechnungsDatum: Date.now(),
