@@ -1,7 +1,6 @@
 'use strict';
 // TODO: GENERELL -> Authentifizierung zwischen Microservices muss noch umgesetzt werden
-// TODO: Aufsteigende Rechnungsnummern !
-
+// TODO: Umgebungsvariablen beim Start des Containers mit einfügen -> Umgebungsvariable für Router MongoDB
 const express = require('express');
 const bodyParser = require('body-parser');
 var jsonBodyParser = bodyParser.json({ type: 'application/json' });
@@ -92,10 +91,8 @@ const app = express();
 app.get('/getInvoices', [jsonBodyParser], async function (req, res) {
     try {
         // await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
-        await mongoose.connect("mongodb://router01rechnungsverwaltung/backend");
-        console.log("Verbindung zur DB war erreich!")
-        const rechnungen = rechnungenDB.find({});
-        console.log(rechnungen);
+        await mongoose.connect(dbconfig.url);
+        const rechnungen = await rechnungenDB.find({});
         res.status(200).send(rechnungen);
     } catch(err){
         console.log(err);
@@ -105,8 +102,10 @@ app.get('/getInvoices', [jsonBodyParser], async function (req, res) {
 
 app.get('/getInvoice/:rechnungsNummer', [jsonBodyParser], async function (req, res) {
     try {
-        await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
-        res.send(200, "test");
+        let params = checkParams(req, res,["rechnungsNummer"]);
+        await mongoose.connect(dbconfig.url)
+        const rechnung = await rechnungenDB.find({"rechnungsNummer": params.rechnungsNummer });
+        res.status(200).send(rechnung);
     } catch(err){
         console.log('db error');
         res.status(401).send(err);
@@ -116,8 +115,10 @@ app.get('/getInvoice/:rechnungsNummer', [jsonBodyParser], async function (req, r
 
 app.get('/getInvoiceByUser/:loginName', [jsonBodyParser], async function (req, res) {
     try {
-        await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
-        res.send(200, "test");
+        let params = checkParams(req, res,["loginName"]);
+        await mongoose.connect(dbconfig.url)
+        const rechnung = await rechnungenDB.find({"loginName": params.loginName});
+        res.status(200).send(rechnung);
     } catch(err){
         console.log('db error');
         res.status(401).send(err);
@@ -127,17 +128,18 @@ app.get('/getInvoiceByUser/:loginName', [jsonBodyParser], async function (req, r
 
 app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
     try {
-        await mongoose.connect(dbconfig.url, {useNewUrlParser: true, dbName: "backend"});
+        await mongoose.connect(dbconfig.url);
         let params = checkParams(req, res,["loginName", "vorname", "nachname", "straße",
                                                         "hausnummer", "plz", "fahrzeugId", "fahrzeugTyp", "fahrzeugModel",
                                                         "dauerDerBuchung", "preisNetto"]);
+
         // Dies funktioniert da javascript generell single Thread Modus arbeitet
         // Sobald das await kommt wird der code oben für die nächste Anfrage ausgeführt
         // Somit ist dieses Aufzählen Thread sicher !
         // Problem: Bei Skalierung muss dies auch abgestimmt werden
-        // Deshalb TODO: Aufbau eines Datenbank Cluster Systems das mithilfe von Triggern die Rechnungsnummern bestimmt ! -> ist doch nicht nötig, da der Cluster die Unique Key Eigenschaft über den Cluster gewährleistet
+        // TODO: Aufbau eines Datenbank Cluster Systems das mithilfe von Triggern die Rechnungsnummern bestimmt !
+        //  -> ist doch nicht nötig, da der Cluster die Unique Key Eigenschaft über den Cluster gewährleistet
         // Wird auch für die anderen Microservices wichtig
-        // TODO: Loadbalancing für Router selber konfigurieren
         aktuelleRechnungsNummer = aktuelleRechnungsNummer + 1;
         await rechnungenDB.create({
             rechnungsDatum: Date.now(),
@@ -156,7 +158,7 @@ app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
             bezahlt: false,
             storniert: false
         });
-        res.send(200, "Rechnung wurde erfolgeich erstellt")
+        res.send(200, "Rechnung wurde erfolgeich erstellt");
     } catch(err){
         console.log('db error');
         res.status(401).send(err);
