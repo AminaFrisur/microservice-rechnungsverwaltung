@@ -1,12 +1,15 @@
 
 networks:
-  main:
+  service:
+    name: rechnungsverwaltung-service-main
+  architecture:
+    name: main
 
 services:
   ## Router
   router-01-rechnungsverwaltung:
     networks:
-      - main
+      - service
     build: ./db_config_router
     container_name: router-01-rechnungsverwaltung
     command: mongos --port 27017 --configdb rechnungsverwaltung-mongodb-config-server/db-rechnung-config1:27017,db-rechnung-config2:27017,db-rechnung-config3:27017 --bind_ip_all
@@ -15,7 +18,7 @@ services:
 
   router-02-rechnungsverwaltung:
     networks:
-      - main
+      - service
     build: ./db_config_router
     container_name: router-02-rechnungsverwaltung
     command: mongos --port 27017 --configdb rechnungsverwaltung-mongodb-config-server/db-rechnung-config1:27017,db-rechnung-config2:27017,db-rechnung-config3:27017 --bind_ip_all
@@ -25,7 +28,7 @@ services:
   ## Config Servers
   db-rechnung-config1:
     networks:
-      - main
+      - service
     build: ./db_config_router
     ports:
       - 27017:27017
@@ -34,7 +37,7 @@ services:
 
   db-rechnung-config2:
     networks:
-      - main
+      - service
     build: ./db_config_router
     ports:
       - 27018:27017
@@ -43,7 +46,7 @@ services:
 
   db-rechnung-config3:
     networks:
-      - main
+      - service
     build: ./db_config_router
     ports:
       - 27019:27017
@@ -53,7 +56,7 @@ services:
   ## Shards 1
   shard-01-rechnungsverwaltung1:
     networks:
-      - main
+      - service
     build: ./db_shard
     container_name: shard-01-rechnungsverwaltung1
     command: mongod --port 27017 --shardsvr --replSet shard-01-db-rechnungsverwaltung
@@ -62,7 +65,7 @@ services:
 
   shard-01-rechnungsverwaltung2:
     networks:
-      - main
+      - service
     build: ./db_shard
     container_name: shard-01-rechnungsverwaltung2
     command: mongod --port 27017 --shardsvr --replSet shard-01-db-rechnungsverwaltung
@@ -71,7 +74,7 @@ services:
 
   shard-01-rechnungsverwaltung3:
     networks:
-      - main
+      - service
     build: ./db_shard
     container_name: shard01rechnungsverwaltung3
     command: mongod --port 27017 --shardsvr --replSet shard-01-db-rechnungsverwaltung
@@ -82,7 +85,7 @@ services:
   ## Shards 2
   shard-02-rechnungsverwaltung1:
     networks:
-      - main
+      - service
     build: ./db_shard
     container_name: shard-02-rechnungsverwaltung1
     command: mongod --port 27017 --shardsvr --replSet shard-02-db-rechnungsverwaltung
@@ -91,7 +94,7 @@ services:
 
   shard-02-rechnungsverwaltung2:
     networks:
-      - main
+      - service
     build: ./db_shard
     container_name: shard-02-rechnungsverwaltung2
     command: mongod --port 27017 --shardsvr --replSet shard-02-db-rechnungsverwaltung
@@ -100,7 +103,7 @@ services:
 
   shard-02-rechnungsverwaltung3:
     networks:
-      - main
+      - service
     build: ./db_shard
     container_name: shard-02-rechnungsverwaltung3
     command: mongod --port 27017 --shardsvr --replSet shard-02-db-rechnungsverwaltung
@@ -110,7 +113,8 @@ services:
   ## Rest API
   rest-api-rechnungsverwaltung1:
     networks:
-      - main
+      - service
+      - architecture
     container_name: rest-api-rechnungsverwaltung1
     build: ./rest_api
     ports:
