@@ -11,7 +11,7 @@ const mongoose = require('mongoose');
 
 mongoose.Promise = global.Promise;
 const dbconfig = {
-    url: 'mongodb://router01rechnungsverwaltung/backend',
+    url: 'mongodb://router-01-rechnungsverwaltung/backend',
     user: 'admin',
     pwd: 'test1234'
 }
