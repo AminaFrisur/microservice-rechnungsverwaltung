@@ -29,6 +29,7 @@ const ObjectId = Schema.ObjectId;
 const rechnung = new Schema({
     id: ObjectId,
     rechnungsNummer: Number,
+    buchungsNummer: Number,
     rechnungsDatum: Date,
     // Ebenfalls auch hier Vorsicht wegen verteilten Transaktionenen !
     loginName: String,
@@ -44,6 +45,7 @@ const rechnung = new Schema({
     fahrzeugModel: String,
     dauerDerBuchung: String,
     preisNetto: Number,
+    preisBrutto: Number,
     bezahlt: Boolean,
     storniert: Boolean,
 });
@@ -123,7 +125,7 @@ app.get('/getInvoiceByUser/:loginName', async function (req, res) {
 app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
     try {
         await mongoose.connect(dbconfig.url);
-        let params = checkParams(req, res,["loginName", "vorname", "nachname", "straße",
+        let params = checkParams(req, res,["buchungsNummer","loginName", "vorname", "nachname", "straße",
                                                         "hausnummer", "plz", "fahrzeugId", "fahrzeugTyp", "fahrzeugModel",
                                                         "dauerDerBuchung", "preisNetto"]);
 
@@ -140,6 +142,7 @@ app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
         await rechnungenDB.create({
             rechnungsDatum: Date.now(),
             rechnungsNummer: aktuelleRechnungsNummer,
+            buchungsNummer: params.buchungsNummer,
             loginName: params.loginName,
             vorname: params.vorname,
             nachname: params.nachname,
@@ -151,6 +154,7 @@ app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
             fahrzeugModel: params.fahrzeugModel,
             dauerDerBuchung: params.dauerDerBuchung,
             preisNetto: params.preisNetto,
+            preisBrutto: preisNetto * 1.19,
             bezahlt: false,
             storniert: false
         });

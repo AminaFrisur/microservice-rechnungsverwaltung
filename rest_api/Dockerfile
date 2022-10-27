@@ -1,5 +1,5 @@
 FROM node:16.17.1-alpine
-LABEL description="Rest Api of Microservice Rechnungsverwaltung with Node"
+LABEL description="Rest Api fuer Microservice Rechnungsverwaltung mit Node.js"
 
 # Set working directory
 WORKDIR ./rest-api/
