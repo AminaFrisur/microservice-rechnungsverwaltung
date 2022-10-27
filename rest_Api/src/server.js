@@ -16,12 +16,6 @@ const dbconfig = {
     pwd: 'test1234'
 }
 
-// Dadurch das Javascript Thread Safe ist muss hier keine Synchronisierung stattfinden !
-// Wird bei CreateInvoice hochgezählt
-// Falls es doch zu einem doppelten Wert in der DB führt, gibt die MongoDB durch unique Index Konfiguration einen Fehler zurück
-// Also kann keine Rechnung in der DB erscheinen die eine doppelte Rechnungsnummer besitzt
-let aktuelleRechnungsNummer = 0;
-
 // definiere ein Schema
 const Schema = mongoose.Schema;
 const ObjectId = Schema.ObjectId;
@@ -88,7 +82,7 @@ function checkParams(req, res, requiredParams) {
 const app = express();
 
 // api call für eventuelle Statistiken
-app.get('/getInvoices', [jsonBodyParser], async function (req, res) {
+app.get('/getInvoices', async function (req, res) {
     try {
         // await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
         await mongoose.connect(dbconfig.url);
@@ -100,7 +94,7 @@ app.get('/getInvoices', [jsonBodyParser], async function (req, res) {
     }
 });
 
-app.get('/getInvoice/:rechnungsNummer', [jsonBodyParser], async function (req, res) {
+app.get('/getInvoice/:rechnungsNummer', async function (req, res) {
     try {
         let params = checkParams(req, res,["rechnungsNummer"]);
         await mongoose.connect(dbconfig.url)
@@ -113,7 +107,7 @@ app.get('/getInvoice/:rechnungsNummer', [jsonBodyParser], async function (req, r
 
 });
 
-app.get('/getInvoiceByUser/:loginName', [jsonBodyParser], async function (req, res) {
+app.get('/getInvoiceByUser/:loginName', async function (req, res) {
     try {
         let params = checkParams(req, res,["loginName"]);
         await mongoose.connect(dbconfig.url)
@@ -133,14 +127,16 @@ app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
                                                         "hausnummer", "plz", "fahrzeugId", "fahrzeugTyp", "fahrzeugModel",
                                                         "dauerDerBuchung", "preisNetto"]);
 
-        // Dies funktioniert da javascript generell single Thread Modus arbeitet
-        // Sobald das await kommt wird der code oben für die nächste Anfrage ausgeführt
-        // Somit ist dieses Aufzählen Thread sicher !
-        // Problem: Bei Skalierung muss dies auch abgestimmt werden
-        // TODO: Aufbau eines Datenbank Cluster Systems das mithilfe von Triggern die Rechnungsnummern bestimmt !
-        //  -> ist doch nicht nötig, da der Cluster die Unique Key Eigenschaft über den Cluster gewährleistet
-        // Wird auch für die anderen Microservices wichtig
-        aktuelleRechnungsNummer = aktuelleRechnungsNummer + 1;
+
+        let aktuelleRechnung = await rechnungenDB.findOne({}, null, {sort: {rechnungssNummer: 1}});
+        let aktuelleRechnungsNummer = 1;
+
+        // Wenn keine Buchungen vorhanden sind
+        if(aktuelleRechnung) {
+            aktuelleRechnungsNummer = aktuelleRechnung.rechnungsNummer + 1;
+        }
+
+        console.log(aktuelleRechnungsNummer);
         await rechnungenDB.create({
             rechnungsDatum: Date.now(),
             rechnungsNummer: aktuelleRechnungsNummer,
