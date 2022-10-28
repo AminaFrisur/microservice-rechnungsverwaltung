@@ -1,6 +1,7 @@
 'use strict';
 // TODO: GENERELL -> Authentifizierung zwischen Microservices muss noch umgesetzt werden
 // TODO: Umgebungsvariablen beim Start des Containers mit einfügen -> Umgebungsvariable für Router MongoDB
+// TODO: Füge Backend Job ein um Gutschriften vom System aus zu bezahlen
 const express = require('express');
 const bodyParser = require('body-parser');
 var jsonBodyParser = bodyParser.json({ type: 'application/json' });
@@ -47,7 +48,8 @@ const rechnung = new Schema({
     preisNetto: Number,
     preisBrutto: Number,
     bezahlt: Boolean,
-    storniert: Boolean,
+    storniert: false,
+    gutschrift: Boolean
 });
 
 const rechnungenDB = mongoose.model('Invoice', rechnung);
@@ -130,7 +132,7 @@ app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
         await mongoose.connect(dbconfig.url);
         let params = checkParams(req, res,["buchungsNummer","loginName", "vorname", "nachname", "straße",
                                                         "hausnummer", "plz", "fahrzeugId", "fahrzeugTyp", "fahrzeugModel",
-                                                        "dauerDerBuchung", "preisNetto"]);
+                                                        "dauerDerBuchung", "preisNetto", "gutschrift"]);
 
         let aktuelleRechnung = await rechnungenDB.findOne({}, null, {sort: {rechnungssNummer: -1}});
         let aktuelleRechnungsNummer = 0;
@@ -160,14 +162,59 @@ app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
             preisNetto: params.dauerDerBuchung * params.preisNetto,
             preisBrutto: params.dauerDerBuchung * params.preisNetto * 1.19,
             bezahlt: false,
-            storniert: false
+            storniert: false,
+            gutschrift: params.gutschrift
         });
-        res.send(200, "Rechnung wurde erfolgeich erstellt");
+        res.status(200).send("Rechnung wurde erfolgeich erstellt");
     } catch(err){
         console.log(err);
         res.status(401).send(err);
     }
 });
+
+app.post('/markInvoiceAsPaid/:buchungsNummer', async function (req, res) {
+    try {
+        // await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
+        let params = checkParams(req, res,["buchungsNummer"]);
+        await mongoose.connect(dbconfig.url);
+        const rechnungen = await rechnungenDB.find({"buchungsNummer": params.buchungsNummer});
+        console.log(rechnungen)
+        console.log(rechnungen[0]);
+        console.log("Versuche jetzt die Recchnung als bezahl zu markieren");
+        if(rechnungen && rechnungen[0] && !rechnungen[0].storniert) {
+            rechnungen[0].bezahlt = true;
+            rechnungen[0].save();
+            res.status(200).send("Rechnung wurde bezahlt");
+        } else {
+            res.status(401).send("Rechnung wurde nicht gefunden oder ist schon storniert");
+        }
+
+    } catch(err){
+        console.log(err);
+        res.status(401).send(err);
+    }
+});
+
+app.post('/markInvoiceAsCancelled/:buchungsNummer', async function (req, res) {
+    try {
+        // await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
+        let params = checkParams(req, res,["buchungsNummer"]);
+        await mongoose.connect(dbconfig.url);
+        const rechnungen = await rechnungenDB.find({"buchungsNummer": params.buchungsNummer});
+        if(rechnungen && rechnungen[0] && !rechnungen[0].bezahlt) {
+            rechnungen[0].storniert = true;
+            rechnungen[0].save();
+            res.status(200).send("Rechnung wurde storniert");
+        } else {
+            res.status(401).send("Rechnung wurde nicht gefunden oder ist schon bezahlt und kann deshalb nicht mehr storniert werden");
+        }
+
+    } catch(err){
+        console.log(err);
+        res.status(401).send(err);
+    }
+});
+
 
 app.listen(PORT, HOST, () => {
     console.log(`Running on http://${HOST}:${PORT}`);
