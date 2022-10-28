@@ -55,6 +55,9 @@ const rechnungenDB = mongoose.model('Invoice', rechnung);
 function checkParams(req, res, requiredParams) {
     console.log("checkParams", requiredParams);
     let paramsToReturn = {};
+
+    console.log(req.body);
+
     for (let i = 0; i < requiredParams.length; i++) {
             let param = requiredParams[i];
             
@@ -129,14 +132,15 @@ app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
                                                         "hausnummer", "plz", "fahrzeugId", "fahrzeugTyp", "fahrzeugModel",
                                                         "dauerDerBuchung", "preisNetto"]);
 
-
-        let aktuelleRechnung = await rechnungenDB.findOne({}, null, {sort: {rechnungssNummer: 1}});
-        let aktuelleRechnungsNummer = 1;
+        let aktuelleRechnung = await rechnungenDB.findOne({}, null, {sort: {rechnungssNummer: -1}});
+        let aktuelleRechnungsNummer = 0;
 
         // Wenn keine Buchungen vorhanden sind
         if(aktuelleRechnung) {
-            aktuelleRechnungsNummer = aktuelleRechnung.rechnungsNummer + 1;
+            aktuelleRechnungsNummer = aktuelleRechnung.rechnungsNummer;
         }
+
+        aktuelleRechnungsNummer++;
 
         console.log(aktuelleRechnungsNummer);
         await rechnungenDB.create({
@@ -153,14 +157,14 @@ app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
             fahrzeugTyp: params.fahrzeugTyp,
             fahrzeugModel: params.fahrzeugModel,
             dauerDerBuchung: params.dauerDerBuchung,
-            preisNetto: params.preisNetto,
-            preisBrutto: preisNetto * 1.19,
+            preisNetto: params.dauerDerBuchung * params.preisNetto,
+            preisBrutto: params.dauerDerBuchung * params.preisNetto * 1.19,
             bezahlt: false,
             storniert: false
         });
         res.send(200, "Rechnung wurde erfolgeich erstellt");
     } catch(err){
-        console.log('db error');
+        console.log(err);
         res.status(401).send(err);
     }
 });
