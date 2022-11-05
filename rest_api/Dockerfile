@@ -1,4 +1,4 @@
-FROM node:16.17.1-alpine
+FROM node:19.0.0-alpine
 LABEL description="Rest Api fuer Microservice Rechnungsverwaltung mit Node.js"
 
 # Set working directory

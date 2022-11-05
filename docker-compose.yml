@@ -117,5 +117,11 @@ services:
       - architecture
     container_name: rest-api-rechnungsverwaltung1
     build: ./rest_api
+    environment:
+      - DBUSER=admin
+      - DBPWD=test1234
+      - MONGODBROUTER=mongodb://router-01-rechnungsverwaltung/backend
+      - BENUTZERVERWALTUNG=rest-api-benutzerverwaltung1
+      - BENUTZERVERWALTUNGPORT=8000
     ports:
       - 8001:8000

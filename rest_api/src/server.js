@@ -1,20 +1,42 @@
 'use strict';
-// TODO: GENERELL -> Authentifizierung zwischen Microservices muss noch umgesetzt werden
-// TODO: Umgebungsvariablen beim Start des Containers mit einfügen -> Umgebungsvariable für Router MongoDB
+// TODO: GENERELL -> Authentifizierung zwischen Microservices muss noch umgesetzt werden (Bei Rechnungserstellung und Gutschrift!)
 // TODO: Füge Backend Job ein um Gutschriften vom System aus zu bezahlen
+// TODO: Erstelle einen Trigger für die Erstellung der Rechnungsnummer in MongoDB
+// TODO: Was ist wenn zwei Rechnungen zur einer Buchungsnummer gibt ? -> nicht erlaubt -> aber erlaubt: eine Rechnung und eine Gutschrift zur gleichen Buchung
+// TODO: Noch einen Request einführen, der Rechnungen als PDF Dokument erstellt und wiedergibt -> https://www.npmjs.com/package/pdf-creator-node
+// TODO: NUR RECHNUNG ERSTELLEN WENN WIRKLICH NOCH ZEIT IST
+
 const express = require('express');
 const bodyParser = require('body-parser');
+const CircuitBreaker = require('./circuitBreaker.js');
+const Auth = require("./auth.js")();
+const Cache = require("./cache.js")
 var jsonBodyParser = bodyParser.json({ type: 'application/json' });
+
 // Constants
 const PORT = 8000;
 const HOST = '0.0.0.0';
-const mongoose = require('mongoose');
 
+// Definition CircuitBreaker
+var circuitBreakerBenutzerverwaltung = new CircuitBreaker(150, 30, 0,
+    -3, 10, 3,
+    process.env.BENUTZERVERWALTUNG, process.env.BENUTZERVERWALTUNGPORT);
+
+const middlerwareWrapperAuth = (cache, isAdmin, circuitBreaker) => {
+    return (req, res, next) => {
+        Auth.checkAuth(req, res, isAdmin, cache, circuitBreaker, next);
+    }
+}
+
+// Definition Cache um Nutzer Auth Token zwischen zu speichern
+var cache = new Cache(10000, 5000);
+
+const mongoose = require('mongoose');
 mongoose.Promise = global.Promise;
 const dbconfig = {
-    url: 'mongodb://router-01-rechnungsverwaltung/backend',
-    user: 'admin',
-    pwd: 'test1234'
+    url: process.env.MONGODBROUTER,
+    user: process.env.DBUSER,
+    pwd: process.env.DBPWD
 }
 
 // definiere ein Schema
@@ -89,9 +111,9 @@ function checkParams(req, res, requiredParams) {
 const app = express();
 
 // api call für eventuelle Statistiken
-app.get('/getInvoices', async function (req, res) {
+// nur durch Admin
+app.get('/getInvoices',[middlerwareWrapperAuth(cache, true, circuitBreakerBenutzerverwaltung)], async function (req, res) {
     try {
-        // await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
         await mongoose.connect(dbconfig.url);
         const rechnungen = await rechnungenDB.find({});
         res.status(200).send(rechnungen);
@@ -101,11 +123,11 @@ app.get('/getInvoices', async function (req, res) {
     }
 });
 
-app.get('/getInvoice/:rechnungsNummer', async function (req, res) {
+app.get('/getInvoice/:rechnungsNummer', [middlerwareWrapperAuth(cache, false, circuitBreakerBenutzerverwaltung)], async function (req, res) {
     try {
         let params = checkParams(req, res,["rechnungsNummer"]);
         await mongoose.connect(dbconfig.url)
-        const rechnung = await rechnungenDB.find({"rechnungsNummer": params.rechnungsNummer });
+        const rechnung = await rechnungenDB.find({"rechnungsNummer": params.rechnungsNummer, "loginName": req.headers.login_name});
         res.status(200).send(rechnung);
     } catch(err){
         console.log('db error');
@@ -114,11 +136,10 @@ app.get('/getInvoice/:rechnungsNummer', async function (req, res) {
 
 });
 
-app.get('/getInvoiceByUser/:loginName', async function (req, res) {
+app.get('/getInvoiceByUser/:loginName', [middlerwareWrapperAuth(cache, false, circuitBreakerBenutzerverwaltung)], async function (req, res) {
     try {
-        let params = checkParams(req, res,["loginName"]);
         await mongoose.connect(dbconfig.url)
-        const rechnung = await rechnungenDB.find({"loginName": params.loginName});
+        const rechnung = await rechnungenDB.find({"loginName": req.headers.login_name});
         res.status(200).send(rechnung);
     } catch(err){
         console.log('db error');
@@ -127,6 +148,8 @@ app.get('/getInvoiceByUser/:loginName', async function (req, res) {
 
 });
 
+// Wird nur vom Microservice Buchungsverwaltung aufgerufen
+// Erstellung einer Gutschrift oder einer Rechnung
 app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
     try {
         await mongoose.connect(dbconfig.url);
@@ -134,7 +157,8 @@ app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
                                                         "hausnummer", "plz", "fahrzeugId", "fahrzeugTyp", "fahrzeugModel",
                                                         "dauerDerBuchung", "preisNetto", "gutschrift"]);
 
-        let aktuelleRechnung = await rechnungenDB.findOne({}, null, {sort: {rechnungssNummer: -1}});
+        let aktuelleRechnung = await rechnungenDB.findOne({}, null, {sort: {rechnungsNummer: -1}});
+        console.log(aktuelleRechnung);
         let aktuelleRechnungsNummer = 0;
 
         // Wenn keine Buchungen vorhanden sind
@@ -143,6 +167,7 @@ app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
         }
 
         aktuelleRechnungsNummer++;
+
 
         console.log(aktuelleRechnungsNummer);
         await rechnungenDB.create({
@@ -172,6 +197,7 @@ app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
     }
 });
 
+// Wird nur vom Microservice Buchungsverwaltung aufgerufen
 app.post('/markInvoiceAsPaid/:buchungsNummer', async function (req, res) {
     try {
         // await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
@@ -195,6 +221,7 @@ app.post('/markInvoiceAsPaid/:buchungsNummer', async function (req, res) {
     }
 });
 
+// Wird nur vom Microservice Buchungsverwaltung aufgerufen
 app.post('/markInvoiceAsCancelled/:buchungsNummer', async function (req, res) {
     try {
         // await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
@@ -214,7 +241,6 @@ app.post('/markInvoiceAsCancelled/:buchungsNummer', async function (req, res) {
         res.status(401).send(err);
     }
 });
-
 
 app.listen(PORT, HOST, () => {
     console.log(`Running on http://${HOST}:${PORT}`);
