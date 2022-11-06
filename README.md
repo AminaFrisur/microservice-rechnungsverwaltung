@@ -67,3 +67,8 @@ Stand 25.10:
 - Zudem wenn ein User seine kompletten Rechnungen haben will -> nur in einem Shard
 - Problem: Wenn neue hinzukommen kann sich das ganze nochmals etwas verteilen
 - SOMIT DB FERTIG !!
+
+Stand 5.11:
+- https://nodejs.dev/en/learn/nodejs-with-webassembly/
+- Hier steht das WebAssembly Modules standard mäßig nicht auf OS Funktionen Zugreifen können
+- Hier wird eine Third Party Laufzeitumgebung benötigt (wie WasmTime oder WasmEdge)

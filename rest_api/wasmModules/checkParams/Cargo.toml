@@ -1,0 +1,11 @@
+[package]
+name = "microservice_rechnungsverwaltung_check_param_module"
+version = "0.0.1"
+authors = ["timHoeffner"]
+edition = "2022"
+
+[[bin]]
+name = "checkParams"
+path = "./src/checkParams.rs"
+
+[dependencies]
