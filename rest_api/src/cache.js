@@ -1,4 +1,4 @@
-class UserCache {
+export default class UserCache {
     cachedUser;
     timestamp;
     cacheTime;
@@ -148,5 +148,3 @@ class UserCache {
     }
 
 }
-
-module.exports = UserCache

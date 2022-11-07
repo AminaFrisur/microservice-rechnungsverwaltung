@@ -1,16 +1,12 @@
 'use strict';
-// TODO: GENERELL -> Authentifizierung zwischen Microservices muss noch umgesetzt werden (Bei Rechnungserstellung und Gutschrift!)
-// TODO: Füge Backend Job ein um Gutschriften vom System aus zu bezahlen
-// TODO: Erstelle einen Trigger für die Erstellung der Rechnungsnummer in MongoDB
-// TODO: Was ist wenn zwei Rechnungen zur einer Buchungsnummer gibt ? -> nicht erlaubt -> aber erlaubt: eine Rechnung und eine Gutschrift zur gleichen Buchung
-// TODO: Noch einen Request einführen, der Rechnungen als PDF Dokument erstellt und wiedergibt -> https://www.npmjs.com/package/pdf-creator-node
-// TODO: NUR RECHNUNG ERSTELLEN WENN WIRKLICH NOCH ZEIT IST
+import {checkAuth} from "./auth.js";
 
-const express = require('express');
-const bodyParser = require('body-parser');
-const CircuitBreaker = require('./circuitBreaker.js');
-const Auth = require("./auth.js")();
-const Cache = require("./cache.js")
+import express from 'express';
+import bodyParser  from 'body-parser';
+import CircuitBreaker from './circuitBreaker.js';
+import Cache from "./cache.js";
+import {default as mongoose} from 'mongoose';
+
 var jsonBodyParser = bodyParser.json({ type: 'application/json' });
 
 // Constants
@@ -24,14 +20,14 @@ var circuitBreakerBenutzerverwaltung = new CircuitBreaker(150, 30, 0,
 
 const middlerwareWrapperAuth = (cache, isAdmin, circuitBreaker) => {
     return (req, res, next) => {
-        Auth.checkAuth(req, res, isAdmin, cache, circuitBreaker, next);
+        checkAuth(req, res, isAdmin, cache, circuitBreaker, next);
     }
 }
 
 // Definition Cache um Nutzer Auth Token zwischen zu speichern
 var cache = new Cache(10000, 5000);
 
-const mongoose = require('mongoose');
+
 mongoose.Promise = global.Promise;
 const dbconfig = {
     url: process.env.MONGODBROUTER,

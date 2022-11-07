@@ -1,6 +1,6 @@
-const httpClient = require("./httpClient.js")();
+import {makePostRequest} from "./httpClient.js";
 
-class CircuitBreaker {
+export default class CircuitBreaker {
     // Open, Half, Closed
     CircuitBreakerState;
     successCount;
@@ -110,7 +110,7 @@ class CircuitBreaker {
             if(this.CircuitBreakerState == "HALF") {
                 this.requestCount++;
             }
-            let result = await httpClient.makePostRequest(this.hostname, this.port, path, bodyData, headerData);
+            let result = await makePostRequest(this.hostname, this.port, path, bodyData, headerData);
             this.successCount++;
             console.log("Circuit Breaker: Request war erfolgreich. Success Count ist jetzt bei " + this.successCount);
             return result;
@@ -137,5 +137,3 @@ class CircuitBreaker {
     }
 
 }
-
-module.exports = CircuitBreaker
