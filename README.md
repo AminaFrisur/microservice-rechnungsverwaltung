@@ -110,3 +110,8 @@ Stand 07.11.2022:
 - Es ist etwas komplizierter
 - Wichtig war: Erstmal alles in Es6 umkonvertieren
 - das commonjs plugin macht dies für die node_modules
+- Aktuelles Ergebnis: Ich habe es soweit hinbekommen ein Bundle zu erstellen
+- Problem: Es sind immernoch ein paar import statements dabei
+- import path usw
+- die muss ich noch rausbekommen
+- ansonsten müsste es eigentlich gehen
