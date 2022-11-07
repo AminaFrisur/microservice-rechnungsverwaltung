@@ -67,3 +67,46 @@ Stand 25.10:
 - Zudem wenn ein User seine kompletten Rechnungen haben will -> nur in einem Shard
 - Problem: Wenn neue hinzukommen kann sich das ganze nochmals etwas verteilen
 - SOMIT DB FERTIG !!
+
+Stand 06.11:
+- In diesem Projekt wird hauptsächlich mit WasmEdge QuickJS gearbeitet#
+- QuickJS ist dabei ein Javascript Interpreter
+- Dieser wird innerhalb der WasmEdge Laufzeitumgebung ausgeführt
+- Ich gehe hier davon aus, das quasi QuickJS den Javascript Code in WASM Code übersetzt 
+- und dieser dann von der Laufzeitumgebung WasmEdge in richtigen Byte Code übersetzt wird
+- Der Vorteil dann hier: Mit Nodejs ist kein Linux Container bei MS nötig
+- Hier reicht dann auch einfach die Laufzeitumgebung WasmEdge aus (Virtuelle Stack Machine)
+- Diese soll nach meiner Kenntnis nochmals Ressourcen schonender als ein Linux Container sein
+- Somit Ziel bei diesem Projekt: Die Nodejs Anwendung mit WasmEdge zum laufen zu bringen
+- Das Aktuelle PRoblem was ich dabei aber sehe: Wie sieht es auch mit der Verbindung zur DB, weil ja aktuell keine normalen Sockets Wasm Edge unterstüzt werden
+- Muss somit einfach ausprobiert werden
+- Hier wird es dann auch mehrere Varianten von MS geben: NodeJS Wasm Microservice (Also Standalone) und NodeJS Wasm mit Docker 
+- Docker ist ja eine Laufzeitumgebung um Container zu managen
+- Diese bietet aber mittlerweile auch Support für Wasm an 
+- Seit dem 26.10.2022 (also ganz neu!)
+- Jetzt zu Nodejs:
+- https://wasmedge.org/book/en/write_wasm/js/nodejs.html
+- WasmEdge hat aktuell auch das Ziel NodeJS APIs in WasmEdge QuickJS zu integrieren
+- Ziel ist es ein unmodifiziertes Nodejs Program in WasmEdge QuickJS zum laufen zu bringen
+- Das Bedeutet in der Zukunft: das aktuelle NodeJS Anwendungen einfach in WasmEdge laufen sollen
+- Wichtig: das Modules Verzeichnis von NodeJS muss zugreifbar gemacht werden für WasmEdge
+- Anscheinend müssen erst alle Module in ES6 Module umgewandelt werden
+- Dies geschieht dann mit rollup.js
+- https://rollupjs.org/guide/en/
+- Mit Rollup ist ein bundler
+- "fasse quasi alles in eine Javascript Datei zusammen"
+- Tutorial: https://www.youtube.com/watch?v=IdxAJaKwuxQ
+- Schritt 1: Installiere Rollup js
+- Schritt 2: in der package json Datei: "scripts": {"start": "rollup src/server.js -o build/bundle.js -f cjs"}
+- -o Output File
+- -f bedeutet format
+- cjs -> CommonJS Format
+- Schritt 3: Config File für Rollup erstellen
+
+Stand 07.11.2022:
+- Rollup Bundle erfolgreich erstellt
+- Hierfür waren bestimmte Plugins von Rollup nötig 
+- https://github.com/rollup/plugins
+- Es ist etwas komplizierter
+- Wichtig war: Erstmal alles in Es6 umkonvertieren
+- das commonjs plugin macht dies für die node_modules

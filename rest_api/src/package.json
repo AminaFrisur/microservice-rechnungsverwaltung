@@ -9,9 +9,15 @@
     "start": "rollup -c"
   },
   "dependencies": {
-    "express": "^4.18.2",
+    "@rollup/plugin-commonjs": "^23.0.2",
+    "@rollup/plugin-json": "^5.0.1",
+    "@rollup/plugin-node-resolve": "^15.0.1",
+    "@rollup/plugin-babel": "^6.0.2",
     "body-parser": "^1.20.1",
-    "mongoose": "^6.6.5"
+    "express": "^4.18.2",
+    "mongodb": "^4.11.0",
+    "mongoose": "^6.6.5",
+    "rollup": "^3.2.5"
   },
   "author": "Tim Hoeffner",
   "license": "ISC"
