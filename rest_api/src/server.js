@@ -1,35 +1,28 @@
 'use strict';
-// TODO: GENERELL -> Authentifizierung zwischen Microservices muss noch umgesetzt werden (Bei Rechnungserstellung und Gutschrift!)
-// TODO: Füge Backend Job ein um Gutschriften vom System aus zu bezahlen
-// TODO: Erstelle einen Trigger für die Erstellung der Rechnungsnummer in MongoDB
-// TODO: Was ist wenn zwei Rechnungen zur einer Buchungsnummer gibt ? -> nicht erlaubt -> aber erlaubt: eine Rechnung und eine Gutschrift zur gleichen Buchung
-// TODO: Noch einen Request einführen, der Rechnungen als PDF Dokument erstellt und wiedergibt -> https://www.npmjs.com/package/pdf-creator-node
-// TODO: NUR RECHNUNG ERSTELLEN WENN WIRKLICH NOCH ZEIT IST
-
 const express = require('express');
 const bodyParser = require('body-parser');
-const CircuitBreaker = require('./circuitBreaker.js');
 const Auth = require("./auth.js")();
-const Cache = require("./cache.js")
 var jsonBodyParser = bodyParser.json({ type: 'application/json' });
-
+const JWT_SECRET = "goK!pusp6ThEdURUtRenOwUhAsWUCLheasfr43qrf43rttq3";
 // Constants
 const PORT = 8000;
 const HOST = '0.0.0.0';
 
-// Definition CircuitBreaker
-var circuitBreakerBenutzerverwaltung = new CircuitBreaker(150, 30, 0,
-    -3, 10, 3,
-    process.env.BENUTZERVERWALTUNG, process.env.BENUTZERVERWALTUNGPORT);
+// Microservice Credentials:
+var root = "root";
+var password = process.env.ROOTPW;
 
-const middlerwareWrapperAuth = (cache, isAdmin, circuitBreaker) => {
+const middlerwareCheckAuthMicroservice = () => {
     return (req, res, next) => {
-        Auth.checkAuth(req, res, isAdmin, cache, circuitBreaker, next);
+        Auth.checkAuthMicroservice(req, res, root, password,  next);
     }
 }
 
-// Definition Cache um Nutzer Auth Token zwischen zu speichern
-var cache = new Cache(10000, 5000);
+const middlerwareCheckAuth = (isAdmin) => {
+    return (req, res, next) => {
+        Auth.checkAuth(req, res, isAdmin, JWT_SECRET,  next);
+    }
+}
 
 const mongoose = require('mongoose');
 mongoose.Promise = global.Promise;
@@ -112,7 +105,7 @@ const app = express();
 
 // api call für eventuelle Statistiken
 // nur durch Admin
-app.get('/getInvoices',[middlerwareWrapperAuth(cache, true, circuitBreakerBenutzerverwaltung)], async function (req, res) {
+app.get('/getInvoices',[middlerwareCheckAuth( true)], async function (req, res) {
     try {
         await mongoose.connect(dbconfig.url);
         const rechnungen = await rechnungenDB.find({});
@@ -123,7 +116,7 @@ app.get('/getInvoices',[middlerwareWrapperAuth(cache, true, circuitBreakerBenutz
     }
 });
 
-app.get('/getInvoice/:rechnungsNummer', [middlerwareWrapperAuth(cache, false, circuitBreakerBenutzerverwaltung)], async function (req, res) {
+app.get('/getInvoice/:rechnungsNummer', [middlerwareCheckAuth(  false)], async function (req, res) {
     try {
         let params = checkParams(req, res,["rechnungsNummer"]);
         await mongoose.connect(dbconfig.url)
@@ -136,7 +129,7 @@ app.get('/getInvoice/:rechnungsNummer', [middlerwareWrapperAuth(cache, false, ci
 
 });
 
-app.get('/getInvoiceByUser/:loginName', [middlerwareWrapperAuth(cache, false, circuitBreakerBenutzerverwaltung)], async function (req, res) {
+app.get('/getInvoiceByUser', [middlerwareCheckAuth(  false)], async function (req, res) {
     try {
         await mongoose.connect(dbconfig.url)
         const rechnung = await rechnungenDB.find({"loginName": req.headers.login_name});
@@ -148,9 +141,9 @@ app.get('/getInvoiceByUser/:loginName', [middlerwareWrapperAuth(cache, false, ci
 
 });
 
-// Wird nur vom Microservice Buchungsverwaltung aufgerufen
+
 // Erstellung einer Gutschrift oder einer Rechnung
-app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
+app.post('/createInvoice', [middlerwareCheckAuthMicroservice(), jsonBodyParser], async function (req, res) {
     try {
         await mongoose.connect(dbconfig.url);
         let params = checkParams(req, res,["buchungsNummer","loginName", "vorname", "nachname", "straße",
@@ -167,7 +160,6 @@ app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
         }
 
         aktuelleRechnungsNummer++;
-
 
         console.log(aktuelleRechnungsNummer);
         await rechnungenDB.create({
@@ -197,8 +189,7 @@ app.post('/createInvoice', [jsonBodyParser], async function (req, res) {
     }
 });
 
-// Wird nur vom Microservice Buchungsverwaltung aufgerufen
-app.post('/markInvoiceAsPaid/:buchungsNummer', async function (req, res) {
+app.post('/markInvoiceAsPaid/:buchungsNummer', [middlerwareCheckAuthMicroservice()], async function (req, res) {
     try {
         // await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
         let params = checkParams(req, res,["buchungsNummer"]);
@@ -221,8 +212,8 @@ app.post('/markInvoiceAsPaid/:buchungsNummer', async function (req, res) {
     }
 });
 
-// Wird nur vom Microservice Buchungsverwaltung aufgerufen
-app.post('/markInvoiceAsCancelled/:buchungsNummer', async function (req, res) {
+
+app.post('/markInvoiceAsCancelled/:buchungsNummer', [middlerwareCheckAuthMicroservice()], async function (req, res) {
     try {
         // await mongoose.connect(dbconfig.url, {useNewUrlParser: true, user: dbconfig.user, pass: dbconfig.pwd});
         let params = checkParams(req, res,["buchungsNummer"]);
